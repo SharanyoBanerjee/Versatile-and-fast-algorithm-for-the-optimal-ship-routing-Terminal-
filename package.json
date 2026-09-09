@@ -1,0 +1,26 @@
+{
+  "name": "ad_terminal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SharanyoBanerjee/Versatile-and-fast-algorithm-for-the-optimal-ship-routing-Terminal-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SharanyoBanerjee/Versatile-and-fast-algorithm-for-the-optimal-ship-routing-Terminal-/issues"
+  },
+  "homepage": "https://github.com/SharanyoBanerjee/Versatile-and-fast-algorithm-for-the-optimal-ship-routing-Terminal-#readme",
+  "dependencies": {
+    "chalk": "^6.0.0",
+    "cli-table3": "^0.6.5",
+    "ora": "^9.4.1"
+  }
+}
