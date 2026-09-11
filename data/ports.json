@@ -1,0 +1,102 @@
+{
+    "ports": [
+        {
+            "id": "INMUM",
+            "name": "Mumbai Port",
+            "country": "India",
+            "latitude": 18.94,
+            "longitude": 72.84
+        },
+        {
+            "id": "INKOC",
+            "name": "Kochi Port",
+            "country": "India",
+            "latitude": 9.97,
+            "longitude": 76.27
+        },
+        {
+            "id": "INCOL",
+            "name": "Colombo Port",
+            "country": "Sri Lanka",
+            "latitude": 6.95,
+            "longitude": 79.84
+        },
+        {
+            "id": "INCHN",
+            "name": "Chennai Port",
+            "country": "India",
+            "latitude": 13.08,
+            "longitude": 80.29
+        },
+        {
+            "id": "INVIS",
+            "name": "Visakhapatnam Port",
+            "country": "India",
+            "latitude": 17.69,
+            "longitude": 83.29
+        },
+        {
+            "id": "SGSIN",
+            "name": "Port of Singapore",
+            "country": "Singapore",
+            "latitude": 1.26,
+            "longitude": 103.84
+        },
+        {
+            "id": "MYTPP",
+            "name": "Port Klang",
+            "country": "Malaysia",
+            "latitude": 3.00,
+            "longitude": 101.40
+        },
+        {
+            "id": "LKHAJ",
+            "name": "Hambantota Port",
+            "country": "Sri Lanka",
+            "latitude": 6.12,
+            "longitude": 81.12
+        },
+        {
+            "id": "KEMBA",
+            "name": "Mombasa Port",
+            "country": "Kenya",
+            "latitude": -4.04,
+            "longitude": 39.67
+        },
+        {
+            "id": "TZDAR",
+            "name": "Dar es Salaam Port",
+            "country": "Tanzania",
+            "latitude": -6.82,
+            "longitude": 39.28
+        },
+        {
+            "id": "MZMAP",
+            "name": "Maputo Port",
+            "country": "Mozambique",
+            "latitude": -25.97,
+            "longitude": 32.58
+        },
+        {
+            "id": "ZADUR",
+            "name": "Durban Port",
+            "country": "South Africa",
+            "latitude": -29.87,
+            "longitude": 31.05
+        },
+        {
+            "id": "MUPLU",
+            "name": "Port Louis",
+            "country": "Mauritius",
+            "latitude": -20.16,
+            "longitude": 57.50
+        },
+        {
+            "id": "SADIE",
+            "name": "Diego Garcia",
+            "country": "British Indian Ocean Territory",
+            "latitude": -7.32,
+            "longitude": 72.42
+        }
+    ]
+}
