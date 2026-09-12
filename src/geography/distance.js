@@ -4,17 +4,29 @@ export function toRadians(degrees) {
     return degrees * Math.PI / 180;
 }
 
+function getLat(point) {
+    return point.lat !== undefined
+        ? point.lat
+        : point.latitude;
+}
+
+function getLon(point) {
+    return point.lon !== undefined
+        ? point.lon
+        : point.longitude;
+}
+
 export function haversineDistance(coord1, coord2) {
 
-    const lat1 = toRadians(coord1.lat);
-    const lat2 = toRadians(coord2.lat);
+    const lat1 = toRadians(getLat(coord1));
+    const lat2 = toRadians(getLat(coord2));
 
     const deltaLat = toRadians(
-        coord2.lat - coord1.lat
+        getLat(coord2) - getLat(coord1)
     );
 
     const deltaLon = toRadians(
-        coord2.lon - coord1.lon
+        getLon(coord2) - getLon(coord1)
     );
 
     const a =

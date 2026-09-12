@@ -126,5 +126,5 @@ test("Interaction should calculate travel time", () => {
 
     const time = interaction.calculateTravelTime(185.2, 90);
 
-    assert.equal(time, 4.545454545454546);
+    assert.equal(time, 4.545454545454545);
 });

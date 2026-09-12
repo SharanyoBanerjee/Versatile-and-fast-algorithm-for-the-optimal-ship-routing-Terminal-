@@ -253,16 +253,24 @@ The current implementation contains the core routing foundation.
 * Port searching
 * Port lookup
 * Nearest navigable grid-node lookup
+* Nearest port lookup
+* Ship model (cruising speed, wave/wind limits, fuel consumption)
+* Ship management and searching
+* Weather model (wind, waves, currents)
+* Synthetic weather provider
+* Ship + weather interaction
+  * Effective speed under currents, wind, and waves
+  * Travel time and fuel calculation
+  * Weather-feasibility constraints
+* Multi-objective cost engine with normalized weighted costs
 * Automated Node.js tests
 
 ### Currently being developed
 
-* Robust integration between ports and geographic grids
-* Ship characteristics
-* Weather modelling
-* Ocean-current modelling
-* Multi-objective route costs
-* Dynamic routing
+* Interactive CLI menu and route visualization
+* Optimization presets (fastest/balanced/safest modes)
+* Time-dependent routing
+* Dynamic route replanning
 
 ---
 
@@ -723,26 +731,57 @@ combined with route replanning.
 ocean-route-optimizer/
 │
 ├── data/
-│   ├── ne_110m_land.geojson
-│   └── ports.json
+│   ├── ocean-grid.json
+│   ├── ports.json
+│   ├── ships.json
+│   └── weather.json
 │
 ├── src/
 │   │
+│   ├── cli/
+│   │   ├── display.js
+│   │   ├── index.js
+│   │   └── menu.js
+│   │
 │   ├── geography/
+│   │   ├── buildGraph.js
 │   │   ├── coordinates.js
 │   │   ├── distance.js
 │   │   ├── grid.js
-│   │   ├── landMask.js
-│   │   └── buildGraph.js
+│   │   └── landMask.js
+│   │
+│   ├── optimization/
+│   │   ├── costEngine.js
+│   │   ├── normalization.js
+│   │   └── weights.js
 │   │
 │   ├── ports/
 │   │   └── portManager.js
 │   │
-│   └── routing/
-│       ├── graph.js
-│       ├── priorityQueue.js
-│       ├── dijkstra.js
-│       └── astar.js
+│   ├── routing/
+│   │   ├── astar.js
+│   │   ├── dijkstra.js
+│   │   ├── graph.js
+│   │   └── priorityQueue.js
+│   │
+│   ├── ships/
+│   │   ├── fuel.js
+│   │   ├── ship.js
+│   │   ├── shipManager.js
+│   │   └── speed.js
+│   │
+│   ├── utils/
+│   │   └── constants.js
+│   │
+│   ├── voyage/
+│   │   └── voyage.js
+│   │
+│   └── weather/
+│       ├── risk.js
+│       ├── shipWeatherInteraction.js
+│       ├── syntheticWeather.js
+│       ├── weather.js
+│       └── weatherProvider.js
 │
 ├── tests/
 │   ├── astar.test.js
@@ -752,7 +791,11 @@ ocean-route-optimizer/
 │   ├── graph.test.js
 │   ├── grid.test.js
 │   ├── landMask.test.js
-│   └── portManager.test.js
+│   ├── optimization.test.js
+│   ├── portManager.test.js
+│   ├── ship.test.js
+│   ├── shipWeatherInteraction.test.js
+│   └── weather.test.js
 │
 ├── package.json
 └── README.md
@@ -861,12 +904,18 @@ Distance calculations
 Graph storage
 Grid generation
 Grid neighbors
+Nearest navigable node
 Land detection
 Port lookup
 Port searching
 Nearest port
 A* routing
+Dijkstra routing
 Cost calculations
+Ship behavior
+Weather model
+Ship-weather interaction
+Optimization cost engine
 ```
 
 Testing individual components allows algorithmic changes to be validated without relying entirely on end-to-end tests.
@@ -1007,14 +1056,13 @@ The project is being developed incrementally.
 * Port lookup
 * Port search
 * Nearest navigable node
+* Nearest port lookup
 
-**Status: In Progress**
+**Status: Implemented**
 
 ---
 
 ## Phase 9 — Ship Model
-
-Planned:
 
 * Ship type
 * Cruising speed
@@ -1022,26 +1070,25 @@ Planned:
 * Maximum operating conditions
 * Ship-specific constraints
 
-**Status: Planned**
+**Status: Implemented**
 
 ---
 
 ## Phase 10 — Weather Model
 
-Planned:
-
 * Wind
 * Waves
-* Weather severity
-* Environmental conditions
+* Currents
+* Synthetic weather provider
+* Seasonal/time-based variation
 
-**Status: Planned**
+**Status: Implemented**
 
 ---
 
 ## Phase 11 — Ship + Weather Interaction
 
-The system will estimate how environmental conditions affect different ships.
+The system estimates how environmental conditions affect different ships.
 
 For example:
 
@@ -1059,13 +1106,13 @@ Effective Speed
 Travel Time
 ```
 
-**Status: Planned**
+**Status: Implemented**
 
 ---
 
 ## Phase 12 — Optimization Cost Function
 
-Introduce configurable costs for:
+Configurable costs for:
 
 ```text
 Time
@@ -1074,7 +1121,9 @@ Safety
 Weather
 ```
 
-**Status: Planned**
+with normalization and adjustable weights.
+
+**Status: Implemented**
 
 ---
 
@@ -1416,14 +1465,14 @@ The current implementation is an evolving research/prototype system.
 
 At the current stage:
 
-* The weather model is not yet integrated.
-* Fuel consumption is not yet physically modelled.
-* Ocean currents are not yet integrated.
-* Wave dynamics are not yet integrated.
-* Ship-specific physics are not yet implemented.
+* The CLI prints the startup banner and exits — an interactive route-selection menu is not yet wired up.
+* Weather conditions are synthetic; no real-time weather feeds are integrated.
+* Fuel consumption is a simple distance-based model, not physically modelling engine curves.
+* Current-assisted and wind/wave speed penalties use a simplified interaction model.
+* Multi-objective weights exist as a cost engine, but optimization presets (fastest/safest/balanced) are not yet exposed.
+* Ship-specific physics (hull, engine, resistance) are not yet implemented.
 * Current geographic resolution is intentionally limited.
 * Port coordinates are a demonstration dataset.
-* The current route cost primarily represents geographic distance.
 * Real-time route replanning is not yet implemented.
 
 These limitations are intentional because the project is being developed incrementally from a verified routing foundation.
