@@ -1,13 +1,13 @@
 export class Ship {
     constructor({
-        id,
+        id = "SHIP1",
         name,
-        type,
+        type = "Cargo Ship",
         cruisingSpeed,
-        maximumSpeed,
+        maximumSpeed = cruisingSpeed * 1.2,
         fuelConsumption,
-        maximumWaveHeight,
-        maximumWindSpeed
+        maximumWaveHeight = 5,
+        maximumWindSpeed = 40
     }) {
         this.id = id;
         this.name = name;
@@ -19,12 +19,13 @@ export class Ship {
         this.maximumWindSpeed = maximumWindSpeed;
     }
 
-    getSpeedKmH() {
-        return this.cruisingSpeed * 1.852;
+    getSpeedKmH(speedKnots = this.cruisingSpeed) {
+        return speedKnots * 1.852;
     }
 
-    calculateTravelTime(distanceKm) {
-        return distanceKm / this.getSpeedKmH();
+    calculateTravelTime(distanceKm, speedKnots = this.cruisingSpeed) {
+        const speedKmH = this.getSpeedKmH(speedKnots);
+        return speedKmH > 0 ? distanceKm / speedKmH : Infinity;
     }
 
     calculateFuel(distanceKm) {
@@ -32,6 +33,7 @@ export class Ship {
     }
 
     canOperateInWeather(weather) {
+        if (!weather) return true;
         return (
             weather.waveHeight <= this.maximumWaveHeight &&
             weather.windSpeed <= this.maximumWindSpeed

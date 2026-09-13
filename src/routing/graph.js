@@ -20,6 +20,13 @@ export class Graph {
     }
 
 
+    hasNode(id) {
+
+        return this.nodes.has(id);
+
+    }
+
+
     addEdge(from, to, weight) {
 
         const fromNode =

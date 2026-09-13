@@ -4,7 +4,7 @@ import { stdin as input, stdout as output } from "node:process";
 let rl = null;
 let lineIterator = null;
 
-export function getLineIterator() {
+function getLineIterator() {
     if (!lineIterator) {
         rl = readline.createInterface({ input, output, terminal: false });
         lineIterator = rl[Symbol.asyncIterator]();
@@ -43,13 +43,13 @@ export async function promptChoice(question, options) {
 
 export async function selectShip(ships) {
     const options = ships.map(ship =>
-        `${ship.name} (${ship.type}) - Speed: ${ship.cruisingSpeed} kts | Fuel rate: ${ship.fuelConsumption} units/km`
+        `${ship.name} (${ship.type}) - Speed: ${ship.cruisingSpeed} kts | Fuel: ${ship.fuelConsumption} units/km`
     );
     const index = await promptChoice("\nAvailable ships:", options);
     return ships[index];
 }
 
-export async function selectPort(ports, type) {
+export async function selectPort(ports, type = "departure") {
     const label = type === "departure" ? "Departure" : "Destination";
     const options = ports.map(p => `${p.name} (${p.country}) [${p.id}]`);
     const index = await promptChoice(`\nSelect ${label} port:`, options);
@@ -58,33 +58,14 @@ export async function selectPort(ports, type) {
 
 export async function selectOptimizationMode() {
     const modes = [
-        "FASTEST - Minimize travel time",
-        "FUEL_EFFICIENT - Minimize fuel consumption",
-        "SAFEST - Minimize weather risk",
-        "BALANCED - Balanced approach",
-        "CUSTOM - Define your own weights"
+        "FASTEST - Minimize voyage time",
+        "BALANCED - Balance time, fuel & safety",
+        "SAFEST - Prioritize avoiding severe weather"
     ];
 
     const index = await promptChoice("\nSelect optimization mode:", modes);
-    const modeMap = ["FASTEST", "FUEL_EFFICIENT", "SAFEST", "BALANCED", "CUSTOM"];
-
-    if (index === 4) {
-        return selectCustomWeights();
-    }
-
-    return { mode: modeMap[index], customWeights: null };
-}
-
-async function selectCustomWeights() {
-    console.log("\n--- Custom Optimization Weights ---");
-    console.log("Weights will be normalized to sum to 1.\n");
-
-    const time = parseFloat(await prompt("Time weight (e.g., 0.3): ") || "0.3");
-    const fuel = parseFloat(await prompt("Fuel weight (e.g., 0.3): ") || "0.3");
-    const safety = parseFloat(await prompt("Safety weight (e.g., 0.2): ") || "0.2");
-    const risk = parseFloat(await prompt("Risk weight (e.g., 0.2): ") || "0.2");
-
-    return { mode: "CUSTOM", customWeights: { time, fuel, safety, risk } };
+    const modeKeys = ["FASTEST", "BALANCED", "SAFEST"];
+    return modeKeys[index];
 }
 
 export async function selectDepartureTime() {
@@ -102,11 +83,6 @@ export async function selectDepartureTime() {
     return isNaN(time.getTime()) ? new Date() : time;
 }
 
-export async function confirm(message = "Continue? (y/n): ") {
-    const answer = await prompt(message);
-    return answer.toLowerCase() === "y" || answer.toLowerCase() === "yes";
-}
-
 export function closeReader() {
     if (rl) {
         rl.close();
@@ -114,4 +90,3 @@ export function closeReader() {
         lineIterator = null;
     }
 }
-

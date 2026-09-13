@@ -1,13 +1,11 @@
 import test from "node:test";
-import assert from "node:assert";
+import assert from "node:assert/strict";
 import { OceanGrid } from "../src/geography/grid.js";
 import { buildGraphFromGrid } from "../src/geography/buildGraph.js";
 import { timeDependentAStar } from "../src/routing/timeDependentAstar.js";
-import { SyntheticWeatherProvider } from "../src/weather/syntheticWeather.js";
 import { Ship } from "../src/ships/ship.js";
-import { CostEngine } from "../src/optimization/costEngine.js";
 
-function createTestSystem() {
+function createTestGridAndShip() {
     const grid = new OceanGrid({
         minLat: 10,
         maxLat: 12,
@@ -18,152 +16,74 @@ function createTestSystem() {
     });
     grid.generate();
     const graph = buildGraphFromGrid(grid);
+
     const ship = new Ship({
-        id: "TEST",
-        name: "Test Ship",
+        id: "TEST_SHIP",
+        name: "Test Cargo",
         type: "Cargo",
         cruisingSpeed: 20,
-        maximumSpeed: 22,
+        maximumSpeed: 24,
         fuelConsumption: 0.4,
         maximumWaveHeight: 5,
         maximumWindSpeed: 40
     });
-    const weatherProvider = new SyntheticWeatherProvider();
-    const costEngine = new CostEngine({
-        timeWeight: 0.5,
-        fuelWeight: 0.3,
-        safetyWeight: 0.1,
-        riskWeight: 0.1
-    });
-    return { grid, graph, ship, weatherProvider, costEngine };
+
+    return { grid, graph, ship };
 }
 
-test("Time-dependent A* finds path with static weather", () => {
-    const { graph, ship, weatherProvider, costEngine } = createTestSystem();
-    const departureTime = new Date("2026-01-01T10:00:00Z");
+test("Time-Dependent A* finds a valid route under normal conditions", () => {
+    const { graph, ship } = createTestGridAndShip();
 
     const result = timeDependentAStar({
         graph,
         startId: "N0_0",
         targetId: "N2_2",
         ship,
-        weatherProvider,
-        costEngine,
-        departureTime
+        departureTime: new Date("2026-01-01T10:00:00Z"),
+        profile: "BALANCED"
     });
 
-    assert.ok(result.path.length > 0, "Should find a path");
-    assert.ok(result.totalTime > 0, "Should have positive travel time");
+    assert.ok(result.path.length > 0, "Path should contain nodes");
+    assert.equal(result.path[0], "N0_0");
+    assert.equal(result.path[result.path.length - 1], "N2_2");
+    assert.ok(result.totalTime > 0, "Travel time should be positive");
+    assert.ok(result.totalFuel > 0, "Fuel consumption should be positive");
+    assert.ok(result.arrivalTime instanceof Date, "Arrival time should be valid Date");
 });
 
-test("Changing weather changes travel time", () => {
-    const { graph, ship, costEngine } = createTestSystem();
+test("Time-Dependent A* supports FASTEST, BALANCED, and SAFEST profiles", () => {
+    const { graph, ship } = createTestGridAndShip();
+    const departure = new Date("2026-01-01T08:00:00Z");
 
-    const weatherMorning = new class {
-        getWeather(lat, lon, time) {
-            const hour = new Date(time).getUTCHours();
-            const windSpeed = hour < 12 ? 5 : 25;
-            const waveHeight = hour < 12 ? 0.5 : 4;
-            return {
-                latitude: lat,
-                longitude: lon,
-                time,
-                windSpeed,
-                windDirection: 90,
-                waveHeight,
-                waveDirection: 90,
-                currentSpeed: 1,
-                currentDirection: 90
-            };
-        }
-    };
+    const fastest = timeDependentAStar({ graph, startId: "N0_0", targetId: "N2_2", ship, departureTime: departure, profile: "FASTEST" });
+    const balanced = timeDependentAStar({ graph, startId: "N0_0", targetId: "N2_2", ship, departureTime: departure, profile: "BALANCED" });
+    const safest = timeDependentAStar({ graph, startId: "N0_0", targetId: "N2_2", ship, departureTime: departure, profile: "SAFEST" });
 
-    const departureMorning = new Date("2026-01-01T10:00:00Z");
-    const departureAfternoon = new Date("2026-01-01T14:00:00Z");
-
-    const resultMorning = timeDependentAStar({
-        graph,
-        startId: "N0_0",
-        targetId: "N2_2",
-        ship,
-        weatherProvider: weatherMorning,
-        costEngine,
-        departureTime: departureMorning
-    });
-
-    const resultAfternoon = timeDependentAStar({
-        graph,
-        startId: "N0_0",
-        targetId: "N2_2",
-        ship,
-        weatherProvider: weatherMorning,
-        costEngine,
-        departureTime: departureAfternoon
-    });
-
-    assert.ok(resultMorning.totalTime < resultAfternoon.totalTime ||
-               resultMorning.totalTime === resultAfternoon.totalTime,
-        "Morning departure should be faster or equal due to better weather");
+    assert.ok(fastest.path.length > 0);
+    assert.ok(balanced.path.length > 0);
+    assert.ok(safest.path.length > 0);
 });
 
-test("Dangerous weather can make route infeasible", () => {
-    const { graph, costEngine } = createTestSystem();
-
-    const severeWeather = new class {
-        getWeather(lat, lon, time) {
-            return {
-                latitude: lat,
-                longitude: lon,
-                time,
-                windSpeed: 60,
-                windDirection: 90,
-                waveHeight: 8,
-                waveDirection: 90,
-                currentSpeed: 2,
-                currentDirection: 90
-            };
-        }
-    };
-
-    const ship = new Ship({
-        id: "TEST",
-        name: "Test Ship",
-        type: "Cargo",
-        cruisingSpeed: 20,
-        maximumSpeed: 22,
-        fuelConsumption: 0.4,
-        maximumWaveHeight: 5,
-        maximumWindSpeed: 40
+test("Time-Dependent A* rejects route if ship weather limits are exceeded everywhere", () => {
+    const { graph } = createTestGridAndShip();
+    // Fragile ship with very low tolerances
+    const fragileShip = new Ship({
+        id: "TINY_BOAT",
+        name: "Tiny Boat",
+        cruisingSpeed: 5,
+        maximumSpeed: 6,
+        fuelConsumption: 0.1,
+        maximumWaveHeight: 0.01, // will fail in any real wave condition
+        maximumWindSpeed: 0.01
     });
-
-    const departureTime = new Date("2026-01-01T10:00:00Z");
 
     const result = timeDependentAStar({
         graph,
         startId: "N0_0",
         targetId: "N2_2",
-        ship,
-        weatherProvider: severeWeather,
-        costEngine,
-        departureTime
+        ship: fragileShip,
+        departureTime: new Date()
     });
 
-    assert.ok(result.path.length === 0 || result.totalTime === Infinity,
-        "Route should be infeasible or empty with severe weather");
-});
-
-test("Time-dependent routing can select different route from static", () => {
-    const { graph, ship, weatherProvider, costEngine } = createTestSystem();
-
-    const timeDependentResult = timeDependentAStar({
-        graph,
-        startId: "N0_0",
-        targetId: "N2_2",
-        ship,
-        weatherProvider,
-        costEngine,
-        departureTime: new Date("2026-01-01T10:00:00Z")
-    });
-
-    assert.ok(timeDependentResult.path, "Time-dependent route should exist");
+    assert.equal(result.path.length, 0, "Should return empty path when conditions are unsafe");
 });

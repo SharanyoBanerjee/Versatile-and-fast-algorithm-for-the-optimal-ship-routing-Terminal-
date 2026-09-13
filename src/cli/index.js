@@ -1,26 +1,21 @@
 import chalk from "chalk";
-
-import { prompt, selectShip, selectPort, selectOptimizationMode, selectDepartureTime, closeReader } from "./prompts.js";
-import { formatHeader, formatRouteResult, formatError, formatSuccess, formatLoading } from "./formatter.js";
-import { loadPorts } from "../ports/portManager.js";
-import { SyntheticWeatherProvider } from "../weather/syntheticWeather.js";
-import { OceanGrid } from "../geography/grid.js";
-import { LandMask } from "../geography/landMask.js";
-import { buildGraphFromGrid } from "../geography/buildGraph.js";
-import { timeDependentAStar } from "../routing/timeDependentAstar.js";
-import { getProfile } from "../optimization/optimizationProfiles.js";
-import { CostEngine } from "../optimization/costEngine.js";
-
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
+import { prompt, selectShip, selectPort, selectOptimizationMode, selectDepartureTime, closeReader } from "./prompts.js";
+import { formatHeader, formatRouteResult, formatError, formatSuccess } from "./formatter.js";
+import { OceanGrid } from "../geography/grid.js";
+import { buildGraphFromGrid } from "../geography/buildGraph.js";
+import { timeDependentAStar } from "../routing/timeDependentAstar.js";
+import { Ship } from "../ships/ship.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const DATA_PATH = join(__dirname, "..", "..", "data") + "/";
+const PORTS_PATH = join(__dirname, "..", "..", "data", "ports.json");
 
-async function loadShips() {
-    const { Ship } = await import("../ships/ship.js");
-    const ships = [
+function getShips() {
+    return [
         new Ship({
             id: "SHIP1",
             name: "Ocean Star",
@@ -52,122 +47,85 @@ async function loadShips() {
             maximumWindSpeed: 30
         })
     ];
-    return ships;
 }
 
-async function initializeSystem() {
-    console.log(chalk.cyan("========================================"));
-    console.log(chalk.cyan("       OCEAN ROUTE OPTIMIZER"));
-    console.log(chalk.cyan("========================================"));
-    console.log();
+async function loadPortsData() {
+    const raw = await readFile(PORTS_PATH, "utf8");
+    const json = JSON.parse(raw);
+    return json.ports || [];
+}
+
+async function initialize() {
+    formatHeader("OCEAN ROUTE OPTIMIZER");
     console.log(chalk.blue("Initializing routing system..."));
 
-    await formatLoading("Loading port data...");
-    const ports = await loadPorts(DATA_PATH + "ports.json");
-    formatSuccess(`Loaded ${ports.getAllPorts().length} ports`);
+    const ports = await loadPortsData();
+    formatSuccess(`Loaded ${ports.length} ports`);
 
-    await formatLoading("Initializing weather model...");
-    const weatherProvider = new SyntheticWeatherProvider();
-    formatSuccess("Synthetic weather provider ready");
-
-    await formatLoading("Building ocean grid...");
     const grid = new OceanGrid({
         minLat: -30,
         maxLat: 25,
         minLon: 30,
         maxLon: 110,
         step: 2,
-        navigability: (lat, lon) => true
+        navigability: () => true
     });
     grid.generate();
     formatSuccess(`Generated grid with ${grid.nodes.size} nodes`);
 
-    await formatLoading("Building routing graph...");
     const graph = buildGraphFromGrid(grid);
     formatSuccess(`Graph has ${graph.nodes.size} navigable nodes`);
-
     console.log();
-    return { ports, weatherProvider, graph, grid };
-}
 
-function findNearestNodeId(grid, latitude, longitude) {
-    const node = grid.findNearestNavigableNode(latitude, longitude);
-    return node ? node.id : null;
+    return { ports, grid, graph };
 }
 
 async function run() {
     try {
-        const { ports, weatherProvider, graph, grid } = await initializeSystem();
-        const ships = await loadShips();
-
-        console.log();
-        console.log("Ready to calculate optimal ship routes.");
-        console.log();
+        const { ports, grid, graph } = await initialize();
+        const ships = getShips();
 
         const ship = await selectShip(ships);
-        formatSuccess(`Selected: ${ship.name}`);
+        formatSuccess(`Selected Ship: ${ship.name}`);
 
-        const departurePort = await selectPort(ports.getAllPorts(), "departure");
+        const departurePort = await selectPort(ports, "departure");
         formatSuccess(`Departure: ${departurePort.name}`);
 
-        const destinationPort = await selectPort(ports.getAllPorts(), "destination");
+        const destinationPort = await selectPort(ports, "destination");
         formatSuccess(`Destination: ${destinationPort.name}`);
 
-        const { mode, customWeights } = await selectOptimizationMode();
-
-        let optimizationProfile;
-        if (customWeights) {
-            optimizationProfile = getProfile("CUSTOM", customWeights);
-        } else {
-            optimizationProfile = getProfile(mode);
+        if (departurePort.id === destinationPort.id) {
+            formatError("Departure and destination ports cannot be the same.");
+            return;
         }
 
-        formatSuccess(`Optimization: ${optimizationProfile.name}`);
+        const mode = await selectOptimizationMode();
+        formatSuccess(`Optimization: ${mode}`);
 
         const departureTime = await selectDepartureTime();
-        formatSuccess(`Departure: ${departureTime.toUTCString()}`);
+        formatSuccess(`Departure Time: ${departureTime.toUTCString()}`);
 
-        console.log();
-        await formatLoading("Finding route nodes...", 1000);
+        const startNode = grid.findNearestNavigableNode(departurePort.latitude, departurePort.longitude);
+        const targetNode = grid.findNearestNavigableNode(destinationPort.latitude, destinationPort.longitude);
 
-        const startNodeId = findNearestNodeId(grid, departurePort.latitude, departurePort.longitude);
-        const targetNodeId = findNearestNodeId(grid, destinationPort.latitude, destinationPort.longitude);
-
-        if (!startNodeId || !targetNodeId) {
-            formatError("Could not find route nodes for selected ports.");
+        if (!startNode || !targetNode) {
+            formatError("Could not map selected ports to grid nodes.");
             return;
         }
 
-        if (startNodeId === targetNodeId) {
-            formatError("Departure and destination are too close. Please select different ports.");
-            return;
-        }
-
-        console.log();
-        await formatLoading("Computing optimal route...", 2000);
-
-        const costEngine = new CostEngine({
-            timeWeight: optimizationProfile.time,
-            fuelWeight: optimizationProfile.fuel,
-            safetyWeight: optimizationProfile.safety,
-            riskWeight: optimizationProfile.risk
-        });
+        console.log(chalk.blue("\nCalculating optimal route..."));
 
         const result = timeDependentAStar({
             graph,
-            startId: startNodeId,
-            targetId: targetNodeId,
+            startId: startNode.id,
+            targetId: targetNode.id,
             ship,
-            weatherProvider,
-            costEngine,
             departureTime,
-            heuristicMultiplier: 1.0
+            profile: mode
         });
 
-        console.log();
-
         if (!result.path || result.path.length === 0) {
-            formatError("No route found between the selected ports.");
+            formatError("No navigable route found under current weather and ship constraints.");
             return;
         }
 
@@ -175,7 +133,7 @@ async function run() {
             ship,
             departurePort,
             destinationPort,
-            optimizationMode: optimizationProfile,
+            mode,
             route: result,
             distance: result.distance,
             totalTime: result.totalTime,
@@ -183,8 +141,8 @@ async function run() {
             arrivalTime: result.arrivalTime
         });
 
-    } catch (error) {
-        formatError(error.message);
+    } catch (err) {
+        formatError(err.message);
     } finally {
         closeReader();
     }
