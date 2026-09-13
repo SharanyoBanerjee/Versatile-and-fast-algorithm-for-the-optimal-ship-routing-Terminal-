@@ -5,4 +5,12 @@ export class Coordinate {
         this.lon = lon;
     }
 
+    get latitude() {
+        return this.lat;
+    }
+
+    get longitude() {
+        return this.lon;
+    }
+
 }
